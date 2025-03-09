@@ -42,7 +42,7 @@ Imufungen::Imufungen(const std::string& filename,float sampleRate,DEPTH bitDepth
 
 void Imufungen::addTone(float frequency, float duration){
 
-    int length = this->m_SampleRate*duration;
+    int length = this->m_SampleRate*this->m_channels*duration;
     int data_length;
 
     switch(this->m_bitDepth){
@@ -51,9 +51,11 @@ void Imufungen::addTone(float frequency, float duration){
         data_length = sizeof(char);
         std::unique_ptr<char[]> data = std::make_unique<char[]>(length);
 
-        for(int i = 0;i<length;i++){
-          double time = (float)i/this->m_SampleRate;
-          data[i] = std::sin(time*2.0f*PI*frequency)*127+127;
+        for(int i = 0;i<length;i+=this->m_channels){
+          double time = (float)i/this->m_channels/this->m_SampleRate;
+          for(int c =0;c<this->m_channels;c++){
+            data[i+c] = std::sin(time*2.0f*PI*frequency)*127+127;
+          }
         }
         output.write((char*)data.get(),length*sizeof(char));
       }
@@ -63,9 +65,11 @@ void Imufungen::addTone(float frequency, float duration){
         data_length = sizeof(short);
         std::unique_ptr<short[]> data = std::make_unique<short[]>(length);
 
-        for(int i = 0;i<length;i++){
-          double time = (float)i/this->m_SampleRate;
-          data[i] = std::sin(time*2.0f*PI*frequency)*32767;
+        for(int i = 0;i<length;i+=this->m_channels){
+          double time = (float)i/this->m_channels/this->m_SampleRate;
+          for(int c =0;c<this->m_channels;c++){
+             data[i+c] = std::sin(time*2.0f*PI*frequency)*32767;
+          }
         }
         output.write((char*)data.get(),length*sizeof(short));
        }
@@ -77,7 +81,7 @@ void Imufungen::addTone(float frequency, float duration){
 
 void Imufungen::addSweep(float startFrequency, float endFrequency, float duration){
 
-    int length = this->m_SampleRate*duration;
+    int length = this->m_SampleRate*this->m_channels*duration;
     int data_length;
 
     switch(this->m_bitDepth){
@@ -88,12 +92,14 @@ void Imufungen::addSweep(float startFrequency, float endFrequency, float duratio
         double phase = 0.0f;
         double phaseIncrement;
 
-        for(int i = 0;i<length;i++){
-          double time = (double)i/this->m_SampleRate;
+        for(int i = 0;i<length;i+=this->m_channels){
+          double time = (double)i/this->m_channels/this->m_SampleRate;
           double frequency = rangemap(time,0.0f,duration,startFrequency,endFrequency);
           phaseIncrement = (2.0*PI*frequency)/this->m_SampleRate;
           phase+= phaseIncrement;
-          data[i] = std::sin(phase)*127+127;
+          for(int c =0;c<this->m_channels;c++){
+            data[i+c] = std::sin(phase)*127+127;
+          }
         }
         output.write((char*)data.get(),length*sizeof(char));
        }
@@ -105,12 +111,14 @@ void Imufungen::addSweep(float startFrequency, float endFrequency, float duratio
         double phase = 0.0f;
         double phaseIncrement;
 
-        for(int i = 0;i<length;i++){
-          double time = (double)i/this->m_SampleRate;
+        for(int i = 0;i<length;i+=this->m_channels){
+          double time = (double)i/this->m_channels/this->m_SampleRate;
           double frequency = rangemap(time,0.0f,duration,startFrequency,endFrequency);
           phaseIncrement = (2.0*PI*frequency)/this->m_SampleRate;
           phase+= phaseIncrement;
-          data[i] = std::sin(phase)*32767;
+          for(int c =0;c<this->m_channels;c++){
+           data[i+c] = std::sin(phase)*32767;
+          }
         }
         output.write((char*)data.get(),length*sizeof(short));
        }
@@ -122,7 +130,7 @@ void Imufungen::addSweep(float startFrequency, float endFrequency, float duratio
 
 void Imufungen::addSilence(float duration){
 
-  int length = this->m_SampleRate*duration;
+  int length = this->m_SampleRate*this->m_channels*duration;
   int data_length;
 
   switch(this->m_bitDepth){
