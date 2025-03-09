@@ -1,0 +1,5 @@
+PROJECT=imufungen
+CMAKE_MIN_VERSION=3.5
+EXENAME=main
+TEST=false
+DEBUG=true
