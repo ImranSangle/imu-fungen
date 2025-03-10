@@ -40,6 +40,23 @@ Imufungen::Imufungen(const std::string& filename,float sampleRate,DEPTH bitDepth
 
 }
 
+void Imufungen::setVolume(SELECT channel,float percent){
+
+  switch(channel){
+    case SELECT::LEFT:
+      this->m_volume[1] = percent;
+    break;
+    case SELECT::RIGHT:
+      this->m_volume[0] = percent;
+    break;
+    case SELECT::ALL:
+      this->m_volume[0] = percent;
+      this->m_volume[1] = percent;
+    break;
+  }
+
+}
+
 void Imufungen::addTone(float frequency, float duration){
 
     int length = this->m_SampleRate*this->m_channels*duration;
@@ -54,7 +71,7 @@ void Imufungen::addTone(float frequency, float duration){
         for(int i = 0;i<length;i+=this->m_channels){
           double time = (float)i/this->m_channels/this->m_SampleRate;
           for(int c =0;c<this->m_channels;c++){
-            data[i+c] = std::sin(time*2.0f*PI*frequency)*127+127;
+            data[i+c] = std::sin(time*2.0f*PI*frequency)*(127*this->m_volume[c])+127;
           }
         }
         output.write((char*)data.get(),length*sizeof(char));
@@ -68,7 +85,7 @@ void Imufungen::addTone(float frequency, float duration){
         for(int i = 0;i<length;i+=this->m_channels){
           double time = (float)i/this->m_channels/this->m_SampleRate;
           for(int c =0;c<this->m_channels;c++){
-             data[i+c] = std::sin(time*2.0f*PI*frequency)*32767;
+             data[i+c] = std::sin(time*2.0f*PI*frequency)*(32767*this->m_volume[c]);
           }
         }
         output.write((char*)data.get(),length*sizeof(short));
@@ -98,7 +115,7 @@ void Imufungen::addSweep(float startFrequency, float endFrequency, float duratio
           phaseIncrement = (2.0*PI*frequency)/this->m_SampleRate;
           phase+= phaseIncrement;
           for(int c =0;c<this->m_channels;c++){
-            data[i+c] = std::sin(phase)*127+127;
+            data[i+c] = std::sin(phase)*(127*this->m_volume[c])+127;
           }
         }
         output.write((char*)data.get(),length*sizeof(char));
@@ -117,7 +134,7 @@ void Imufungen::addSweep(float startFrequency, float endFrequency, float duratio
           phaseIncrement = (2.0*PI*frequency)/this->m_SampleRate;
           phase+= phaseIncrement;
           for(int c =0;c<this->m_channels;c++){
-           data[i+c] = std::sin(phase)*32767;
+           data[i+c] = std::sin(phase)*(32767*this->m_volume[c]);
           }
         }
         output.write((char*)data.get(),length*sizeof(short));

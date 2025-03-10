@@ -55,17 +55,25 @@ class Imufungen{
     MONO = 1,
     STEREO = 2
   };
+  enum class SELECT{
+    LEFT,
+    RIGHT,
+    ALL
+  };
   private:
    WavHeader m_header;
    float m_SampleRate;
    DEPTH m_bitDepth;
    CHANNELS m_channels;
+   float m_volume[2] = {1.0,1.0};
    int m_totalDataLength;
    std::string m_filename;
    std::ofstream output;
   public:
 
   Imufungen(const std::string& filename,float SampleRate,DEPTH bitDepth,CHANNELS channels);
+
+  void setVolume(SELECT channel,float percent);
 
   void addTone(float frequency,float duration);
   
