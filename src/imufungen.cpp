@@ -128,133 +128,136 @@ void Imufungen::gotoMarker(){
 
 }
 
-void Imufungen::addTone(float frequency, float duration){
-
-    int length = this->m_SampleRate*this->m_channels*duration;
-    int data_length;
+void Imufungen::setParams(int& scale,int& add){
 
     switch(this->m_bitDepth){
       case DEPTH8:
-      {
-        data_length = sizeof(char);
-        std::unique_ptr<char[]> data = std::make_unique<char[]>(length);
-
-        this->loadData(data,length*sizeof(char));
-
-        for(int i = 0;i<length;i+=this->m_channels){
-          double time = (float)i/this->m_channels/this->m_SampleRate;
-          for(int c =0;c<this->m_channels;c++){
-            double value = std::sin(time*2.0f*PI*frequency)*(127*this->m_volume[c])+127;
-            this->blend(data[i+c],value);
-          }
-        }
-        file.write((char*)data.get(),length*sizeof(char));
-      }
+        scale = 127;
+        add = 127;
       break;
       case DEPTH16:
-       {
-        data_length = sizeof(short);
-        std::unique_ptr<short[]> data = std::make_unique<short[]>(length);
-
-        this->loadData(data,length*sizeof(short));
-
-       for(int i = 0;i<length;i+=this->m_channels){
-          double time = (float)i/this->m_channels/this->m_SampleRate;
-          for(int c =0;c<this->m_channels;c++){
-             double value = std::sin(time*2.0f*PI*frequency)*(32767*this->m_volume[c]);
-             this->blend(data[i+c],value);
-          }
-        }
-        file.write((char*)data.get(),length*sizeof(short));
-       }
+        scale = 32767;
+        add = 0;
       break;
     }
+
+}
+
+template<typename T>
+void Imufungen::toneProcessor(float frequency,float duration){
+
+    int length = this->m_SampleRate*this->m_channels*duration;
+    int data_scale;
+    int data_add;
+
+    this->setParams(data_scale,data_add);
+
+    std::unique_ptr<T[]> data = std::make_unique<T[]>(length);
+
+    this->loadData(data,length*sizeof(T));
+
+    for(int i = 0;i<length;i+=this->m_channels){
+      double time = (float)i/this->m_channels/this->m_SampleRate;
+      for(int c =0;c<this->m_channels;c++){
+        double value = std::sin(time*2.0f*PI*frequency)*(data_scale*this->m_volume[c])+data_add;
+        this->blend(data[i+c],value);
+      }
+    }
+    file.write((char*)data.get(),length*sizeof(T));
 
     this->m_totalDataLength+=this->m_SampleRate*duration;
 }
 
-void Imufungen::addSweep(float startFrequency, float endFrequency, float duration){
-
-    int length = this->m_SampleRate*this->m_channels*duration;
-    int data_length;
+void Imufungen::addTone(float frequency, float duration){
 
     switch(this->m_bitDepth){
       case DEPTH8:
-       {
-        std::unique_ptr<char[]> data = std::make_unique<char[]>(length);
-        this->loadData(data,length*sizeof(char));
-        data_length = sizeof(char);
-        double phase = 0.0f;
-        double phaseIncrement;
-
-        for(int i = 0;i<length;i+=this->m_channels){
-          double time = (double)i/this->m_channels/this->m_SampleRate;
-          double frequency = rangemap(time,0.0f,duration,startFrequency,endFrequency);
-          phaseIncrement = (2.0*PI*frequency)/this->m_SampleRate;
-          phase+= phaseIncrement;
-          for(int c =0;c<this->m_channels;c++){
-            double value = std::sin(phase)*(127*this->m_volume[c])+127;
-            this->blend(data[i+c],value);
-          }
-        }
-        file.write((char*)data.get(),length*sizeof(char));
-       }
+        toneProcessor<char>(frequency,duration);
       break;
       case DEPTH16:
-       {
-        std::unique_ptr<short[]> data = std::make_unique<short[]>(length);
-        this->loadData(data,length*sizeof(short));
-        data_length = sizeof(short);
-        double phase = 0.0f;
-        double phaseIncrement;
-
-        for(int i = 0;i<length;i+=this->m_channels){
-          double time = (double)i/this->m_channels/this->m_SampleRate;
-          double frequency = rangemap(time,0.0f,duration,startFrequency,endFrequency);
-          phaseIncrement = (2.0*PI*frequency)/this->m_SampleRate;
-          phase+= phaseIncrement;
-          for(int c =0;c<this->m_channels;c++){
-           double value = std::sin(phase)*(32767*this->m_volume[c]);
-           this->blend(data[i+c],value);
-          }
-        }
-        file.write((char*)data.get(),length*sizeof(short));
-       }
+        toneProcessor<short>(frequency,duration);
       break;
     }
 
-    this->m_totalDataLength+= this->m_SampleRate*duration;
+}
+
+template<typename T>
+void Imufungen::sweepProcessor(float startFrequency,float endFrequency,float duration){
+
+    int length = this->m_SampleRate*this->m_channels*duration;
+    int data_scale;
+    int data_add;
+
+   this->setParams(data_scale,data_add);
+
+   std::unique_ptr<T[]> data = std::make_unique<T[]>(length);
+   this->loadData(data,length*sizeof(T));
+   double phase = 0.0f;
+   double phaseIncrement;
+
+   for(int i = 0;i<length;i+=this->m_channels){
+     double time = (double)i/this->m_channels/this->m_SampleRate;
+     double frequency = rangemap(time,0.0f,duration,startFrequency,endFrequency);
+     phaseIncrement = (2.0*PI*frequency)/this->m_SampleRate;
+     phase+= phaseIncrement;
+     for(int c =0;c<this->m_channels;c++){
+       double value = std::sin(phase)*(data_scale*this->m_volume[c])+data_add;
+       this->blend(data[i+c],value);
+     }
+   }
+   file.write((char*)data.get(),length*sizeof(T));
+
+   this->m_totalDataLength+=this->m_SampleRate*duration;
+}
+
+void Imufungen::addSweep(float startFrequency, float endFrequency, float duration){
+
+    switch(this->m_bitDepth){
+      case DEPTH8:
+        sweepProcessor<char>(startFrequency,endFrequency,duration);
+      break;
+      case DEPTH16:
+        sweepProcessor<short>(startFrequency,endFrequency,duration);
+      break;
+    }
+}
+
+template<typename T>
+void Imufungen::silenceProcessor(float duration){
+
+  int length = this->m_SampleRate*this->m_channels*duration;
+  
+  int silent;
+
+  switch(this->m_bitDepth){
+    case DEPTH8:
+      silent = 127;
+    break;
+    case DEPTH16:
+      silent = 0;
+    break;
+  }
+
+  std::unique_ptr<T[]> data = std::make_unique<T[]>(length);
+  for(int i = 0;i<length;i++){
+    data[i] = silent;
+  }
+
+  file.write((char*)data.get(),length*sizeof(T));
+
+  this->m_totalDataLength+= this->m_SampleRate*duration;
 }
 
 void Imufungen::addSilence(float duration){
 
-  int length = this->m_SampleRate*this->m_channels*duration;
-  int data_length;
-
-  switch(this->m_bitDepth){
-    case DEPTH8:
-     {
-      data_length = sizeof(char);
-      std::unique_ptr<char[]> data = std::make_unique<char[]>(length);
-      for(int i = 0;i<length;i++){
-        data[i] = 127;
-      }
-      file.write((char*)data.get(),length*sizeof(char));
-     }
-    break;
-    case DEPTH16:
-     {
-      data_length = sizeof(short);
-      std::unique_ptr<short[]> data = std::make_unique<short[]>(length);
-      for(int i = 0;i<length;i++){
-        data[i] = 0;
-      }
-      file.write((char*)data.get(),length*sizeof(short));
-     }
-    break;
-  }
-
-  this->m_totalDataLength+= this->m_SampleRate*duration;
+    switch(this->m_bitDepth){
+      case DEPTH8:
+        silenceProcessor<char>(duration);
+      break;
+      case DEPTH16:
+        silenceProcessor<short>(duration);
+      break;
+    }
 }
 
 void Imufungen::finish(){

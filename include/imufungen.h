@@ -85,6 +85,17 @@ class Imufungen{
   template<typename T>
   void loadData(T& data,int length);
 
+  template<typename T>
+  void toneProcessor(float frequency,float duration);
+
+  template<typename T>
+  void sweepProcessor(float startFrequency,float endFrequency,float duration);
+
+  template<typename T>
+  void silenceProcessor(float duration);
+
+  void setParams(int& scale,int& add);
+
   public:
 
   Imufungen(const std::string& filename,float SampleRate,DEPTH bitDepth,CHANNELS channels);
