@@ -14,6 +14,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cstddef>
 #include <math.h>
 #include <memory>
 #include <stdexcept>
@@ -23,6 +24,57 @@
 #include "imufungen.h"
 #include <mathfunctions.h>
 
+template<typename T>
+void Imufungen::blend(T& data,const double& value){
+
+  double l_data = data;
+  double l_value = value;
+
+  if(this->m_bitDepth == DEPTH8){
+    l_data = l_data-127;
+    l_value = l_value-127;
+  }
+
+  switch(this->m_blend){
+    case BLEND::NORMAL:
+      l_data = l_value;
+    break;
+    case BLEND::ADD:
+      l_data+= l_value;
+    break;
+    case BLEND::SUBTRACT:
+      l_data-= l_value;
+    break;
+    case BLEND::MULTIPLY:
+      l_data+= l_value;
+    break;
+    case BLEND::DIVIDE:
+      l_data/= l_value;
+    break;
+  }
+
+  if(this->m_bitDepth == DEPTH8){
+    l_data = l_data+127;
+  }
+
+  data = l_data;
+
+}
+
+template<typename T>
+void Imufungen::loadData(T& data,int length){
+
+  if(this->m_blend != BLEND::NORMAL){
+     size_t savePosition = this->file.tellp();
+     this->file.seekg(this->file.tellp(),std::ios::beg);
+     this->file.read((char*)data.get(),length);
+     if(this->file.eof()){
+       this->file.clear();
+     }
+     this->file.seekp(savePosition,std::ios::beg);
+  }
+
+}
 
 Imufungen::Imufungen(const std::string& filename,float sampleRate,DEPTH bitDepth,CHANNELS channels){
   this->m_filename = filename;
@@ -30,10 +82,10 @@ Imufungen::Imufungen(const std::string& filename,float sampleRate,DEPTH bitDepth
   this->m_bitDepth = bitDepth;
   this->m_channels = channels;
   
-  output.open(this->m_filename,std::ios::binary);
+  this->file.open(this->m_filename,std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
 
-  if(output.is_open()){
-    output.seekp(sizeof(WavHeader),std::ios::beg);
+  if(this->file.is_open()){
+    this->file.seekp(sizeof(WavHeader),std::ios::beg);
   }else{
     throw std::runtime_error("Failed to create file "+this->m_filename);
   }
@@ -44,16 +96,35 @@ void Imufungen::setVolume(SELECT channel,float percent){
 
   switch(channel){
     case SELECT::LEFT:
-      this->m_volume[1] = percent;
+      this->m_volume[0] = percent;
     break;
     case SELECT::RIGHT:
-      this->m_volume[0] = percent;
+      this->m_volume[1] = percent;
     break;
     case SELECT::ALL:
       this->m_volume[0] = percent;
       this->m_volume[1] = percent;
     break;
   }
+
+}
+
+void Imufungen::setBlendMode(BLEND option){
+
+  this->m_blend = option;
+}
+
+void Imufungen::setMarker(){
+
+  this->m_marker = this->file.tellp();
+
+}
+
+void Imufungen::gotoMarker(){
+
+  size_t currentPos = this->file.tellp();
+  this->m_totalDataLength-= (currentPos-this->m_marker)/this->m_channels/(this->m_bitDepth/8);
+  this->file.seekp(this->m_marker,std::ios::beg);
 
 }
 
@@ -68,13 +139,16 @@ void Imufungen::addTone(float frequency, float duration){
         data_length = sizeof(char);
         std::unique_ptr<char[]> data = std::make_unique<char[]>(length);
 
+        this->loadData(data,length*sizeof(char));
+
         for(int i = 0;i<length;i+=this->m_channels){
           double time = (float)i/this->m_channels/this->m_SampleRate;
           for(int c =0;c<this->m_channels;c++){
-            data[i+c] = std::sin(time*2.0f*PI*frequency)*(127*this->m_volume[c])+127;
+            double value = std::sin(time*2.0f*PI*frequency)*(127*this->m_volume[c])+127;
+            this->blend(data[i+c],value);
           }
         }
-        output.write((char*)data.get(),length*sizeof(char));
+        file.write((char*)data.get(),length*sizeof(char));
       }
       break;
       case DEPTH16:
@@ -82,18 +156,21 @@ void Imufungen::addTone(float frequency, float duration){
         data_length = sizeof(short);
         std::unique_ptr<short[]> data = std::make_unique<short[]>(length);
 
-        for(int i = 0;i<length;i+=this->m_channels){
+        this->loadData(data,length*sizeof(short));
+
+       for(int i = 0;i<length;i+=this->m_channels){
           double time = (float)i/this->m_channels/this->m_SampleRate;
           for(int c =0;c<this->m_channels;c++){
-             data[i+c] = std::sin(time*2.0f*PI*frequency)*(32767*this->m_volume[c]);
+             double value = std::sin(time*2.0f*PI*frequency)*(32767*this->m_volume[c]);
+             this->blend(data[i+c],value);
           }
         }
-        output.write((char*)data.get(),length*sizeof(short));
+        file.write((char*)data.get(),length*sizeof(short));
        }
       break;
     }
 
-    this->m_totalDataLength+=length*data_length;
+    this->m_totalDataLength+=this->m_SampleRate*duration;
 }
 
 void Imufungen::addSweep(float startFrequency, float endFrequency, float duration){
@@ -105,6 +182,7 @@ void Imufungen::addSweep(float startFrequency, float endFrequency, float duratio
       case DEPTH8:
        {
         std::unique_ptr<char[]> data = std::make_unique<char[]>(length);
+        this->loadData(data,length*sizeof(char));
         data_length = sizeof(char);
         double phase = 0.0f;
         double phaseIncrement;
@@ -115,15 +193,17 @@ void Imufungen::addSweep(float startFrequency, float endFrequency, float duratio
           phaseIncrement = (2.0*PI*frequency)/this->m_SampleRate;
           phase+= phaseIncrement;
           for(int c =0;c<this->m_channels;c++){
-            data[i+c] = std::sin(phase)*(127*this->m_volume[c])+127;
+            double value = std::sin(phase)*(127*this->m_volume[c])+127;
+            this->blend(data[i+c],value);
           }
         }
-        output.write((char*)data.get(),length*sizeof(char));
+        file.write((char*)data.get(),length*sizeof(char));
        }
       break;
       case DEPTH16:
        {
         std::unique_ptr<short[]> data = std::make_unique<short[]>(length);
+        this->loadData(data,length*sizeof(short));
         data_length = sizeof(short);
         double phase = 0.0f;
         double phaseIncrement;
@@ -134,15 +214,16 @@ void Imufungen::addSweep(float startFrequency, float endFrequency, float duratio
           phaseIncrement = (2.0*PI*frequency)/this->m_SampleRate;
           phase+= phaseIncrement;
           for(int c =0;c<this->m_channels;c++){
-           data[i+c] = std::sin(phase)*(32767*this->m_volume[c]);
+           double value = std::sin(phase)*(32767*this->m_volume[c]);
+           this->blend(data[i+c],value);
           }
         }
-        output.write((char*)data.get(),length*sizeof(short));
+        file.write((char*)data.get(),length*sizeof(short));
        }
       break;
     }
 
-    this->m_totalDataLength+= length*data_length;
+    this->m_totalDataLength+= this->m_SampleRate*duration;
 }
 
 void Imufungen::addSilence(float duration){
@@ -158,7 +239,7 @@ void Imufungen::addSilence(float duration){
       for(int i = 0;i<length;i++){
         data[i] = 127;
       }
-      output.write((char*)data.get(),length*sizeof(char));
+      file.write((char*)data.get(),length*sizeof(char));
      }
     break;
     case DEPTH16:
@@ -168,12 +249,12 @@ void Imufungen::addSilence(float duration){
       for(int i = 0;i<length;i++){
         data[i] = 0;
       }
-      output.write((char*)data.get(),length*sizeof(short));
+      file.write((char*)data.get(),length*sizeof(short));
      }
     break;
   }
 
-  this->m_totalDataLength+= length*data_length;
+  this->m_totalDataLength+= this->m_SampleRate*duration;
 }
 
 void Imufungen::finish(){
@@ -187,7 +268,7 @@ void Imufungen::finish(){
   this->m_header.BitsPerSample = this->m_bitDepth;
   this->m_header.Subchunk2Size = this->m_totalDataLength*this->m_channels*(this->m_bitDepth/8);
 
-  output.seekp(0,std::ios::beg);
-  output.write((char*)&this->m_header,sizeof(WavHeader));
-  output.close();
+  file.seekp(0,std::ios::beg);
+  file.write((char*)&this->m_header,sizeof(WavHeader));
+  file.close();
 }

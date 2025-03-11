@@ -60,20 +60,42 @@ class Imufungen{
     RIGHT,
     ALL
   };
+  enum class BLEND{
+    NORMAL,
+    ADD,
+    SUBTRACT,
+    MULTIPLY,
+    DIVIDE
+  };
   private:
    WavHeader m_header;
    float m_SampleRate;
    DEPTH m_bitDepth;
    CHANNELS m_channels;
+   BLEND m_blend = BLEND::NORMAL;
    float m_volume[2] = {1.0,1.0};
-   int m_totalDataLength;
+   size_t m_totalDataLength;
+   size_t m_marker = sizeof(WavHeader);
    std::string m_filename;
-   std::ofstream output;
+   std::fstream file;
+
+  template<typename T>
+  void blend(T& data,const double& value);
+
+  template<typename T>
+  void loadData(T& data,int length);
+
   public:
 
   Imufungen(const std::string& filename,float SampleRate,DEPTH bitDepth,CHANNELS channels);
 
   void setVolume(SELECT channel,float percent);
+
+  void setMarker();
+
+  void setBlendMode(BLEND option);
+
+  void gotoMarker();
 
   void addTone(float frequency,float duration);
   
