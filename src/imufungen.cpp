@@ -15,6 +15,7 @@
  */
 
 #include <cstddef>
+#include <cstdint>
 #include <math.h>
 #include <memory>
 #include <stdexcept>
@@ -62,7 +63,7 @@ void Imufungen::blend(T& data,const double& value){
 }
 
 template<typename T>
-void Imufungen::loadData(T& data,int length){
+void Imufungen::loadData(T& data,size_t length){
 
   if(this->m_blend != BLEND::NORMAL){
      size_t savePosition = this->file.tellp();
@@ -146,7 +147,7 @@ void Imufungen::setParams(int& scale,int& add){
 template<typename T>
 void Imufungen::toneProcessor(float frequency,float duration){
 
-    int length = this->m_SampleRate*this->m_channels*duration;
+    size_t length = this->m_SampleRate*this->m_channels*duration;
     int data_scale;
     int data_add;
 
@@ -156,9 +157,9 @@ void Imufungen::toneProcessor(float frequency,float duration){
 
     this->loadData(data,length*sizeof(T));
 
-    for(int i = 0;i<length;i+=this->m_channels){
+    for(size_t i = 0;i<length;i+=this->m_channels){
       double time = (float)i/this->m_channels/this->m_SampleRate;
-      for(int c =0;c<this->m_channels;c++){
+      for(uint16_t c =0;c<this->m_channels;c++){
         double value = std::sin(time*2.0f*PI*frequency)*(data_scale*this->m_volume[c])+data_add;
         this->blend(data[i+c],value);
       }
@@ -172,10 +173,10 @@ void Imufungen::addTone(float frequency, float duration){
 
     switch(this->m_bitDepth){
       case DEPTH8:
-        toneProcessor<char>(frequency,duration);
+        toneProcessor<uint8_t>(frequency,duration);
       break;
       case DEPTH16:
-        toneProcessor<short>(frequency,duration);
+        toneProcessor<int16_t>(frequency,duration);
       break;
     }
 
@@ -184,7 +185,7 @@ void Imufungen::addTone(float frequency, float duration){
 template<typename T>
 void Imufungen::sweepProcessor(float startFrequency,float endFrequency,float duration){
 
-    int length = this->m_SampleRate*this->m_channels*duration;
+    size_t length = this->m_SampleRate*this->m_channels*duration;
     int data_scale;
     int data_add;
 
@@ -195,12 +196,12 @@ void Imufungen::sweepProcessor(float startFrequency,float endFrequency,float dur
    double phase = 0.0f;
    double phaseIncrement;
 
-   for(int i = 0;i<length;i+=this->m_channels){
+   for(size_t i = 0;i<length;i+=this->m_channels){
      double time = (double)i/this->m_channels/this->m_SampleRate;
      double frequency = rangemap(time,0.0f,duration,startFrequency,endFrequency);
      phaseIncrement = (2.0*PI*frequency)/this->m_SampleRate;
      phase+= phaseIncrement;
-     for(int c =0;c<this->m_channels;c++){
+     for(uint16_t c =0;c<this->m_channels;c++){
        double value = std::sin(phase)*(data_scale*this->m_volume[c])+data_add;
        this->blend(data[i+c],value);
      }
@@ -214,10 +215,10 @@ void Imufungen::addSweep(float startFrequency, float endFrequency, float duratio
 
     switch(this->m_bitDepth){
       case DEPTH8:
-        sweepProcessor<char>(startFrequency,endFrequency,duration);
+        sweepProcessor<uint8_t>(startFrequency,endFrequency,duration);
       break;
       case DEPTH16:
-        sweepProcessor<short>(startFrequency,endFrequency,duration);
+        sweepProcessor<int16_t>(startFrequency,endFrequency,duration);
       break;
     }
 }
@@ -225,7 +226,7 @@ void Imufungen::addSweep(float startFrequency, float endFrequency, float duratio
 template<typename T>
 void Imufungen::silenceProcessor(float duration){
 
-  int length = this->m_SampleRate*this->m_channels*duration;
+  size_t length = this->m_SampleRate*this->m_channels*duration;
   
   int silent;
 
@@ -239,7 +240,7 @@ void Imufungen::silenceProcessor(float duration){
   }
 
   std::unique_ptr<T[]> data = std::make_unique<T[]>(length);
-  for(int i = 0;i<length;i++){
+  for(size_t i = 0;i<length;i++){
     data[i] = silent;
   }
 
@@ -252,10 +253,10 @@ void Imufungen::addSilence(float duration){
 
     switch(this->m_bitDepth){
       case DEPTH8:
-        silenceProcessor<char>(duration);
+        silenceProcessor<uint8_t>(duration);
       break;
       case DEPTH16:
-        silenceProcessor<short>(duration);
+        silenceProcessor<int16_t>(duration);
       break;
     }
 }

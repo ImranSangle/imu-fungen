@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <fstream>
 
@@ -24,24 +25,24 @@
 struct WavHeader{
  struct{
   char chunkID[4] = {'R','I','F','F'};
-  int ChunkSize;
+  uint32_t ChunkSize;
   char Format[4] = {'W','A','V','E'};
  };
 
  struct{
   char Subchunk1ID[4] = {'f','m','t',' '}; 
-  int Subchunk1Size;
-  short AudioFormat;
-  short NumChannels;
-  int SampleRate;
-  int ByteRate;
-  short Blockalign;
-  short BitsPerSample;
+  uint32_t Subchunk1Size;
+  uint16_t AudioFormat;
+  uint16_t NumChannels;
+  uint32_t SampleRate;
+  uint32_t ByteRate;
+  uint16_t Blockalign;
+  uint16_t BitsPerSample;
  };
 
  struct{
   char Subchunk2ID[4] = {'d','a','t','a'};
-  int Subchunk2Size;
+  uint32_t Subchunk2Size;
  };
 };
 
@@ -83,7 +84,7 @@ class Imufungen{
   void blend(T& data,const double& value);
 
   template<typename T>
-  void loadData(T& data,int length);
+  void loadData(T& data,size_t length);
 
   template<typename T>
   void toneProcessor(float frequency,float duration);
