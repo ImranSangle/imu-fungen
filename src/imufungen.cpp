@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <math.h>
 #include <memory>
+#include <random>
 #include <stdexcept>
 #include <unistd.h>
 #include <fstream>
@@ -219,6 +220,49 @@ void Imufungen::addSweep(float startFrequency, float endFrequency, float duratio
       break;
       case DEPTH16:
         sweepProcessor<int16_t>(startFrequency,endFrequency,duration);
+      break;
+    }
+}
+
+template<typename T>
+void Imufungen::noiseProcessor(float duration){
+
+    size_t length = this->m_SampleRate*this->m_channels*duration;
+    int data_scale;
+    int data_add;
+   
+    this->setParams(data_scale,data_add);
+
+    std::unique_ptr<T[]> data = std::make_unique<T[]>(length);
+
+    this->loadData(data,length*sizeof(T));
+
+    std::random_device rd;
+
+    std::mt19937 gen(rd());
+
+    std::uniform_real_distribution<double> dist(-1,1);
+
+    for(size_t i = 0;i<length;i+=this->m_channels){
+      for(uint16_t c =0;c<this->m_channels;c++){
+        double value = dist(gen)*(data_scale*this->m_volume[c])+data_add;
+        this->blend(data[i+c],value);
+      }
+    }
+
+    file.write((char*)data.get(),length*sizeof(T));
+
+    this->m_totalDataLength+=this->m_SampleRate*duration;
+}
+
+void Imufungen::addNoise(float duration){
+
+    switch(this->m_bitDepth){
+      case DEPTH8:
+        noiseProcessor<uint8_t>(duration);
+      break;
+      case DEPTH16:
+        noiseProcessor<int16_t>(duration);
       break;
     }
 }

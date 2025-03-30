@@ -93,6 +93,9 @@ class Imufungen{
   void sweepProcessor(float startFrequency,float endFrequency,float duration);
 
   template<typename T>
+  void noiseProcessor(float duration);
+
+  template<typename T>
   void silenceProcessor(float duration);
 
   void setParams(int& scale,int& add);
@@ -112,6 +115,8 @@ class Imufungen{
   void addTone(float frequency,float duration);
   
   void addSweep(float startFrequency,float endFrequency,float duration);
+
+  void addNoise(float duration);
 
   void addSilence(float duration);
 
