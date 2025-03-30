@@ -87,7 +87,7 @@ class Imufungen{
   void loadData(T& data,size_t length);
 
   template<typename T>
-  void toneProcessor(float frequency,float duration);
+  void toneProcessor(float frequency,float duration,bool isChime);
 
   template<typename T>
   void sweepProcessor(float startFrequency,float endFrequency,float duration);
@@ -113,6 +113,8 @@ class Imufungen{
   void gotoMarker();
 
   void addTone(float frequency,float duration);
+
+  void addChime(float frequency,float duration);
   
   void addSweep(float startFrequency,float endFrequency,float duration);
 

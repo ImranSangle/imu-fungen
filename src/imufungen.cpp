@@ -146,7 +146,7 @@ void Imufungen::setParams(int& scale,int& add){
 }
 
 template<typename T>
-void Imufungen::toneProcessor(float frequency,float duration){
+void Imufungen::toneProcessor(float frequency,float duration,bool isChime){
 
     size_t length = this->m_SampleRate*this->m_channels*duration;
     int data_scale;
@@ -160,8 +160,9 @@ void Imufungen::toneProcessor(float frequency,float duration){
 
     for(size_t i = 0;i<length;i+=this->m_channels){
       double time = (float)i/this->m_channels/this->m_SampleRate;
+      double decay = isChime ? 1.0-((double)i/length) : 1.0;
       for(uint16_t c =0;c<this->m_channels;c++){
-        double value = std::sin(time*2.0f*PI*frequency)*(data_scale*this->m_volume[c])+data_add;
+        double value = std::sin(time*2.0f*PI*frequency)*(data_scale*this->m_volume[c]*decay)+data_add;
         this->blend(data[i+c],value);
       }
     }
@@ -174,10 +175,23 @@ void Imufungen::addTone(float frequency, float duration){
 
     switch(this->m_bitDepth){
       case DEPTH8:
-        toneProcessor<uint8_t>(frequency,duration);
+        toneProcessor<uint8_t>(frequency,duration,false);
       break;
       case DEPTH16:
-        toneProcessor<int16_t>(frequency,duration);
+        toneProcessor<int16_t>(frequency,duration,false);
+      break;
+    }
+
+}
+
+void Imufungen::addChime(float frequency, float duration){
+
+    switch(this->m_bitDepth){
+      case DEPTH8:
+        toneProcessor<uint8_t>(frequency,duration,true);
+      break;
+      case DEPTH16:
+        toneProcessor<int16_t>(frequency,duration,true);
       break;
     }
 
