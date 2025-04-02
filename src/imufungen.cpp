@@ -78,12 +78,12 @@ void Imufungen::loadData(T& data,size_t length){
 
 }
 
-Imufungen::Imufungen(const std::string& filename,float sampleRate,DEPTH bitDepth,CHANNELS channels){
-  this->m_filename = filename;
-  this->m_SampleRate = sampleRate;
-  this->m_bitDepth = bitDepth;
-  this->m_channels = channels;
-  
+Imufungen::Imufungen(const std::string& filename,float sampleRate,DEPTH bitDepth,CHANNELS channels) : 
+  m_filename(filename),
+  m_SampleRate(sampleRate),
+  m_bitDepth(bitDepth),
+  m_channels(channels)
+{
   this->file.open(this->m_filename,std::ios::binary | std::ios::in | std::ios::out | std::ios::trunc);
 
   if(this->file.is_open()){

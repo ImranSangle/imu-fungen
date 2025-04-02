@@ -75,7 +75,7 @@ class Imufungen{
    CHANNELS m_channels;
    BLEND m_blend = BLEND::NORMAL;
    float m_volume[2] = {1.0,1.0};
-   size_t m_totalDataLength;
+   size_t m_totalDataLength = 0;
    size_t m_marker = sizeof(WavHeader);
    std::string m_filename;
    std::fstream file;
