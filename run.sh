@@ -26,7 +26,7 @@ help(){
   echo "install      Install the project if cmake install command is used $macro"
   echo "debug        Debug the project with gdb debugger (if installed) $macro"
   echo "run          Build,compile and run the project."
-  echo "reconfigure  Reconfigure the variables used for building the project by the run file."
+  echo "reconfigure  Reconfigure cmake and run variables used for building the project."
   echo "clean        Remove the cmake build directory where all the files reside."
 }
 
@@ -63,9 +63,9 @@ init(){
 build(){
   if [[ $DEBUG == "true" ]]; then
     echo "Making debug build."
-    cmake -S . -B build -G "Unix Makefiles" -D CMAKE_EXPORT_COMPILE_COMMANDS=1 -D CMAKE_BUILD_TYPE=Debug
+    cmake -S . -B build -G "Unix Makefiles" -D CMAKE_EXPORT_COMPILE_COMMANDS=1 -D CMAKE_BUILD_TYPE=Debug ${CMAKE_DEFINES}
   else
-    cmake -S . -B build -G "Unix Makefiles" -D CMAKE_EXPORT_COMPILE_COMMANDS=1 -D CMAKE_BUILD_TYPE=Release
+    cmake -S . -B build -G "Unix Makefiles" -D CMAKE_EXPORT_COMPILE_COMMANDS=1 -D CMAKE_BUILD_TYPE=Release ${CMAKE_DEFINES}
   fi
 }
 
@@ -172,6 +172,30 @@ configure(){
    config DEBUG false
   else
    config DEBUG true
+  fi
+  
+  echo "Do you want to configure cmake defines? [y/N]"
+  read VALUE
+  if [[ $VALUE == "y" ]] ; then
+    echo "Generate New 'n' or Append 'a' or clear 'c' ?"
+    read VALUE
+    case $VALUE in 
+      a) 
+        echo "Enter Defines to append [NAME=VALUE]"
+        read VALUE
+        if [[ -n $VALUE ]] ; then
+         config CMAKE_DEFINES "\"${CMAKE_DEFINES} -D ${VALUE}\""
+        fi ;;
+      n) 
+        echo "Enter New defines [NAME=VALUE]"
+        read VALUE
+        if [[ -n $VALUE ]] ; then
+         config CMAKE_DEFINES "\"-D ${VALUE}\""
+        fi ;;
+      d) "cmake defines cleared!" config CMAKE_DEFINES " " ;;
+    esac 
+  else
+    config CMAKE_DEFINES "\"$CMAKE_DEFINES\""
   fi
 }
 

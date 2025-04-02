@@ -19,3 +19,6 @@ add_executable(main src/main.cpp)
 target_link_libraries(main PRIVATE imufungen)
 
 add_subdirectory(test)
+if(EXAMPLE)
+add_subdirectory(examples)
+endif()
